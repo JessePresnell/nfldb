@@ -49,3 +49,68 @@ WHEN oppo_score<=34 THEN -1
 WHEN oppo_score>=35 THEN -4
 ELSE NULL END as def_points
 FROM fantasy.game_score)
+
+DROP TABLE fantasy.dk_points
+
+
+CREATE VIEW fantasy.dk_points AS (
+select
+full_name,
+position::varchar,
+a.player_id,
+gsis_id,
+a.team,
+sum(passing_Tds)*4 +
+SUM(passing_yds)*.04 +
+SUM(receiving_rec) +
+SUM(passing_int)*-1 +
+SUM(rushing_yds)*.1 +
+SUM(rushing_tds)*6 +
+SUM(receiving_yds)*.1 +
+SUM(receiving_tds)*6  +
+SUM(puntret_tds)*6  +
+SUM(fumbles_lost)*-1 +
+(SUM(passing_twoptm)+SUM(rushing_twoptm)+SUM(receiving_twoptm))*2 +
+CASE WHEN SUM(passing_yds)>= 300 THEN 3 ELSE 0 END +
+CASE WHEN SUM(receiving_yds)>=100 THEN 3 ELSE 0 END +
+CASE WHEN SUM(rushing_yds)>=100 THEN 3 ELSE 0 END  +
+SUM(CASE WHEN kicking_fgm_yds=0 THEN 0 WHEN kicking_fgm_yds <=39 THEN 3 WHEN kicking_fgm_yds <=49 THEN 4 WHEN kicking_fgm_yds>=50 THEN 5 ELSE 0 end)
+as fantasy_points
+from play_player a
+LEFT JOIN player b ON a.player_id=b.player_id
+GROUP BY 1, 2, 3, 4, 5
+UNION ALL
+SELECT a.team as full_name, 'DEF'::varchar as position, a.team as player_id, b.gsis_id, a.team,MIN(def_points) + 
+SUM(defense_sk) +
+SUM(defense_int)*2 +
+SUM(defense_frec)*2 +
+SUM(defense_int_tds)*6 +
+SUM(defense_frec_tds)*6 +
+SUM(defense_puntblk)*6 +
+SUM(defense_safe)*2 +
+(SUM(defense_fgblk)*2+ SUM(punting_blk)*2+SUM(defense_xpblk)*2) as fantasy_points FROM fantasy.def_score a
+LEFT JOIN play_player b ON a.team=b.team AND a.gsis_id=b.gsis_id
+GROUP BY 1, 2, 3, 4, 5)
+
+
+SELECT a.team as full_name, 'DEF'::varchar as position, a.team as player_id, b.gsis_id
+a.team,MIN(def_points) ,
+SUM(defense_sk),
+SUM(defense_int)*2,
+SUM(defense_frec)*2,
+SUM(defense_int_tds)*6,
+SUM(defense_frec_tds)*6,
+SUM(defense_puntblk)*6,
+SUM(defense_safe)*2,
+(SUM(defense_fgblk)*2+ SUM(punting_blk)*2+SUM(defense_xpblk)*2) as fantasy_points FROM fantasy.def_score a
+LEFT JOIN play_player b ON a.team=b.team AND a.gsis_id=b.gsis_id
+LEFT JOIN game g ON g.gsis_id=a.gsis_id AND g.gsis_id=b.gsis_id
+GROUP BY 1, 2, 3, 4, 5,6,7,8
+
+
+WHEN oppo_score<=20 THEN 1
+WHEN oppo_score<=27 THEN 0
+WHEN oppo_score<=34 THEN -1
+WHEN oppo_score>=35 THEN -4
+ELSE NULL END as def_points
+FROM fantasy.game_score)
